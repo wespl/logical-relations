@@ -1,9 +1,10 @@
 module STLC where
 
 open import Data.Bool
-open import Data.Nat hiding (erase)
-import Data.Unit
+open import Data.Integer
+open import Data.Unit
 open import Data.Maybe
+open import Data.Nat
 open import Data.Product
 open import Data.Sum
 open import Relation.Binary.PropositionalEquality
@@ -19,7 +20,7 @@ Id : Set
 Id = ℕ
 
 data Type : Set where
-  `Nat  : Type
+  `Int  : Type
   `Unit : Type
   `_⇒_  : Type → Type → Type
   `_×_  : Type → Type → Type
@@ -28,10 +29,10 @@ data Type : Set where
 -- Abstract syntax tree.
 -- These can fail type checking.
 data Term : Set where
-  EUnit ETrue EFalse : Term
+  EUnit : Term
   EVar : Id → Term
-  ENat : ℕ → Term
-  EPlus ETimes ELte EApp EPair : Term → Term → Term
+  ENat : ℤ → Term
+  EPlus ELte EApp EPair : Term → Term → Term
   EFst ESnd : Term → Term
   ECase : Term → Term → Term → Term
   ELet : Id → Term → Term → Term
@@ -39,7 +40,7 @@ data Term : Set where
   EInl EInr : Term → Type → Term
 
 Context : Set
-Context = ?
+Context = {!!}
 
 -- Typing derivations for terms.
 data _⊢_ : Context → Term -> Type → Set where
