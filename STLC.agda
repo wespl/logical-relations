@@ -68,21 +68,21 @@ data Context : Set where
   _,_ : Context → Type → Context
 
 -- Typing derivations for terms.
-data _⊢_∈_ : Context → Term -> Type → Set where
-  UnitTyping : ∀ {Γ} → Γ ⊢ EUnit ∈ `Unit
-  IntTyping : ∀ {Γ i} → Γ ⊢ EInt i ∈ `Int
+data _⊢_⦂_ : Context → Term -> Type → Set where
+  UnitTyping : ∀ {Γ} → Γ ⊢ EUnit ⦂ `Unit
+  IntTyping : ∀ {Γ i} → Γ ⊢ EInt i ⦂ `Int
 
-  LastVarTyping : ∀ {Γ A} → ( Γ , A ) ⊢ EVar 0 ∈ A
+  LastVarTyping : ∀ {Γ A} → ( Γ , A ) ⊢ EVar 0 ⦂ A
   NextVarTyping : ∀ {Γ A B n} →
-                    Γ         ⊢ EVar n ∈ A →
-                    ( Γ , B ) ⊢ EVar (suc n) ∈ A
+                    Γ         ⊢ EVar n ⦂ A →
+                    ( Γ , B ) ⊢ EVar (suc n) ⦂ A
 
-  ELamTyping : ∀ {Γ A B m} → ( Γ , A ) ⊢ m ∈ B
-                           → Γ ⊢ ELam A m ∈ (` A ⇒ B)
+  ELamTyping : ∀ {Γ A B m} → ( Γ , A ) ⊢ m ⦂ B
+                           → Γ ⊢ ELam A m ⦂ (` A ⇒ B)
 
-  EAppTyping : ∀ {Γ A B f m} → Γ ⊢ f ∈ (` A ⇒ B)
-                             → Γ ⊢ m ∈ A
-                             → Γ ⊢ EApp f m ∈ B
+  EAppTyping : ∀ {Γ A B f m} → Γ ⊢ f ⦂ (` A ⇒ B)
+                             → Γ ⊢ m ⦂ A
+                             → Γ ⊢ EApp f m ⦂ B
 
 data Val : Term -> Set where
   UnitVal : Val EUnit
@@ -98,5 +98,13 @@ data _↦*_ : Term -> Term -> Set where
   Stop : ∀ {m} -> (m ↦* m)
   Trans : ∀ {m m' m''} -> (m ↦* m') -> (m' ↦ m'') -> (m ↦* m'')
 
-SN : ∀ {A m} -> · ⊢ m ∈ A -> Σ Term (λ v -> m ↦* v × Val v)
+HT : Type -> Term -> Set
+HT `Int e = Σ Term (λ v -> e ↦* v × Val v)
+HT `Unit e = ⊤
+HT (` A ⇒ B) f = ∀ {e} -> HT A e -> HT B (EApp f e)
+HT (` A × B) e = {!!}
+HT (` A ⊎ B) e = {!!}
+
+
+SN : ∀ {A m} → · ⊢ m ⦂ A -> Σ Term (λ v -> m ↦* v × Val v)
 SN = {!!}
