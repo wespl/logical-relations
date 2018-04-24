@@ -67,6 +67,10 @@ data Context : Set where
   · : Context
   _,_ : Context → Type → Context
 
+ctxSize : Context -> ℕ
+ctxSize · = 0
+ctxSize (Γ , A) = suc (ctxSize Γ)
+
 -- Typing derivations for terms.
 data _⊢_⦂_ : Context → Term -> Type → Set where
   UnitTyping : ∀ {Γ} → Γ ⊢ EUnit ⦂ `Unit
@@ -105,6 +109,33 @@ HT (` A ⇒ B) f = ∀ {e} -> HT A e -> HT B (EApp f e)
 HT (` A × B) e = {!!}
 HT (` A ⊎ B) e = {!!}
 
+-- data Context : Set where
+  -- · : Context
+  -- _,_ : Context → Type → Context
+
+data Substitution : Set where
+  · : Substitution
+  _,_ : Substitution → Term → Substitution
+
+goodSubst : Substitution -> Context -> Set
+goodSubst · · = ⊤
+goodSubst · (G , x) = ⊥
+goodSubst (g , x) · = ⊥
+goodSubst (γ , e) (Γ , τ) = HT τ e × goodSubst γ Γ
+
+applySubst : Term -> Substitution -> Term
+applySubst = {!!}
+
+OHT : Context -> Type -> Term -> Set
+OHT Γ τ e = ∀ {γ} -> (goodSubst γ Γ) -> HT τ (applySubst e γ)
+
+wtOHT : ∀ {Γ τ e} -> Γ ⊢ e ⦂ τ -> OHT Γ τ e
+wtOHT UnitTyping s = {!!}
+wtOHT IntTyping = {!!}
+wtOHT LastVarTyping = {!!}
+wtOHT (NextVarTyping tyderiv) = {!!}
+wtOHT (ELamTyping tyderiv) = {!!}
+wtOHT (EAppTyping tyderiv tyderiv₁) = {!!}
 
 SN : ∀ {A m} → · ⊢ m ⦂ A -> Σ Term (λ v -> m ↦* v × Val v)
 SN = {!!}
