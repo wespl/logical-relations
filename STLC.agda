@@ -107,8 +107,8 @@ data _↦*_ : Term -> Term -> Set where
   Trans : ∀ {m m' m''} -> (m ↦* m') -> (m' ↦ m'') -> (m ↦* m'')
 
 HT : Type -> Term -> Set
-HT `Int e = Σ Term (λ v -> e ↦* v × Val v)
-HT `Unit e = ⊤
+HT `Int e = Σ ℤ (λ v -> e ↦* (EInt v))
+HT `Unit e = e ↦* EUnit
 HT (` A ⇒ B) f = ∀ {e} -> HT A e -> HT B (EApp f e)
 HT (` A × B) e = {!!}
 HT (` A ⊎ B) e = {!!}
@@ -127,24 +127,24 @@ goodSubst .· · = ⊤
 goodSubst .(_ , _) (_,_ {Δ = Δ} {A = A} subst e) = HT A e × goodSubst Δ subst
 
 applySubst : ∀ {Γ Δ} -> Term -> UntypedSubst Γ Δ -> Term
-applySubst e · = e
-applySubst EUnit (rest , e') = EUnit
-applySubst (EInt x) (rest , e') = EInt x
+applySubst EUnit ctx = EUnit
+applySubst (EInt x) ctx = EInt x
 applySubst (EVar zero) (rest , e') = e'
 applySubst (EVar (suc x)) (rest , e') = applySubst (EVar x) rest
-applySubst (ELam t e) ctx@(rest , e') = ELam t (applySubst e (_,_ {A = t} ctx (EVar zero))) 
+applySubst (EVar n) · = EVar n -- should never arise with well-formed e
+applySubst (ELam t e) ctx = ELam t (applySubst e (_,_ {A = t} ctx (EVar zero))) 
 -- when we push the substitution under the binder, we need to add [x/x] in the substitution
-applySubst (EApp e e₁) ctx@(rest , e') = EApp (applySubst e ctx) (applySubst e₁ ctx)
+applySubst (EApp e e₁) ctx = EApp (applySubst e ctx) (applySubst e₁ ctx)
 
 OHT : Context -> Type -> Term -> Set
 OHT Γ τ e = ∀ {γ} -> (goodSubst Γ γ) -> HT τ (applySubst e γ)
 
 wtOHT : ∀ {Γ τ e} -> Γ ⊢ e ⦂ τ -> OHT Γ τ e
-wtOHT UnitTyping s = {!!}
-wtOHT IntTyping = {!!}
-wtOHT LastVarTyping = {!!}
-wtOHT (NextVarTyping tyderiv) = {!!}
-wtOHT (ELamTyping tyderiv) = {!!}
+wtOHT  UnitTyping s = Stop
+wtOHT {e = e} (IntTyping {i = i})  subst = i , Stop
+wtOHT {τ = τ} LastVarTyping {γ , x} (ht , _) = ht
+wtOHT {τ = τ} (NextVarTyping {B = B} {n} tyderiv) {γ , x} (xGood , restGood) = wtOHT tyderiv restGood
+wtOHT (ELamTyping tyderiv) = λ x x₁ → {!!}
 wtOHT (EAppTyping tyderiv tyderiv₁) = {!!}
 
 SN : ∀ {A m} → · ⊢ m ⦂ A -> Σ Term (λ v -> m ↦* v × Val v)
