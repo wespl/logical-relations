@@ -45,6 +45,16 @@ data Term : Set where
   -- ECase : Term → Term → Term → Term
 --  ELet : Id → Term → Term → Term
 
+data Context : Set where
+  · : Context
+  _,_ : Context → Type → Context
+
+ctxSize : Context -> ℕ
+ctxSize · = 0
+ctxSize (Γ , A) = suc (ctxSize Γ)
+
+
+
 weaken : Term -> Term
 weaken (EVar x) = EVar (suc x)
 weaken EUnit = EUnit
@@ -52,6 +62,8 @@ weaken (EInt x) = EInt x
 weaken (ELam A m) = ELam A (weaken m)
 weaken (EApp f m) = EApp (weaken f) (weaken m)
 
+--subst e x e' = e[e'/x]
+-- This is broken.
 subst : Term -> Id -> Term -> Term
 subst EUnit i n = EUnit
 subst (EInt x) i n = EInt x
@@ -62,14 +74,6 @@ subst (EVar i) i' n | no _ = EVar i
 
 subst (ELam A m) i n = ELam A (subst m (suc i) (weaken n))
 subst (EApp f m) i n = EApp (subst f i n) (subst m i n)
-
-data Context : Set where
-  · : Context
-  _,_ : Context → Type → Context
-
-ctxSize : Context -> ℕ
-ctxSize · = 0
-ctxSize (Γ , A) = suc (ctxSize Γ)
 
 -- Typing derivations for terms.
 data _⊢_⦂_ : Context → Term -> Type → Set where
@@ -113,21 +117,27 @@ HT (` A ⊎ B) e = {!!}
   -- · : Context
   -- _,_ : Context → Type → Context
 
-data Substitution : Set where
-  · : Substitution
-  _,_ : Substitution → Term → Substitution
+data UntypedSubst : Context -> Context -> Set where
+  · : ∀ {Γ} -> UntypedSubst Γ ·
+  _,_ : ∀ {Γ Δ A} -> UntypedSubst Γ Δ → Term → UntypedSubst Γ (Δ , A)
 
-goodSubst : Substitution -> Context -> Set
-goodSubst · · = ⊤
-goodSubst · (G , x) = ⊥
-goodSubst (g , x) · = ⊥
-goodSubst (γ , e) (Γ , τ) = HT τ e × goodSubst γ Γ
 
-applySubst : Term -> Substitution -> Term
-applySubst = {!!}
+goodSubst : (Γ : Context) -> UntypedSubst · Γ -> Set
+goodSubst .· · = ⊤
+goodSubst .(_ , _) (_,_ {Δ = Δ} {A = A} subst e) = HT A e × goodSubst Δ subst
+
+applySubst : ∀ {Γ Δ} -> Term -> UntypedSubst Γ Δ -> Term
+applySubst e · = e
+applySubst EUnit (rest , e') = EUnit
+applySubst (EInt x) (rest , e') = EInt x
+applySubst (EVar zero) (rest , e') = e'
+applySubst (EVar (suc x)) (rest , e') = applySubst (EVar x) rest
+applySubst (ELam t e) ctx@(rest , e') = ELam t (applySubst e (_,_ {A = t} ctx (EVar zero))) 
+-- when we push the substitution under the binder, we need to add [x/x] in the substitution
+applySubst (EApp e e₁) ctx@(rest , e') = EApp (applySubst e ctx) (applySubst e₁ ctx)
 
 OHT : Context -> Type -> Term -> Set
-OHT Γ τ e = ∀ {γ} -> (goodSubst γ Γ) -> HT τ (applySubst e γ)
+OHT Γ τ e = ∀ {γ} -> (goodSubst Γ γ) -> HT τ (applySubst e γ)
 
 wtOHT : ∀ {Γ τ e} -> Γ ⊢ e ⦂ τ -> OHT Γ τ e
 wtOHT UnitTyping s = {!!}
