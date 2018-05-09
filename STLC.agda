@@ -113,10 +113,6 @@ HT (` A ⇒ B) f = ∀ {e} -> HT A e -> HT B (EApp f e)
 HT (` A × B) e = {!!}
 HT (` A ⊎ B) e = {!!}
 
--- data Context : Set where
-  -- · : Context
-  -- _,_ : Context → Type → Context
-
 data UntypedSubst : Context -> Context -> Set where
   · : ∀ {Γ} -> UntypedSubst Γ ·
   _,_ : ∀ {Γ Δ A} -> UntypedSubst Γ Δ → Term → UntypedSubst Γ (Δ , A)
@@ -126,6 +122,7 @@ goodSubst : (Γ : Context) -> UntypedSubst · Γ -> Set
 goodSubst .· · = ⊤
 goodSubst .(_ , _) (_,_ {Δ = Δ} {A = A} subst e) = HT A e × goodSubst Δ subst
 
+ 
 applySubst : ∀ {Γ Δ} -> Term -> UntypedSubst Γ Δ -> Term
 applySubst EUnit ctx = EUnit
 applySubst (EInt x) ctx = EInt x
@@ -144,7 +141,8 @@ wtOHT  UnitTyping s = Stop
 wtOHT {e = e} (IntTyping {i = i})  subst = i , Stop
 wtOHT {τ = τ} LastVarTyping {γ , x} (ht , _) = ht
 wtOHT {τ = τ} (NextVarTyping {B = B} {n} tyderiv) {γ , x} (xGood , restGood) = wtOHT tyderiv restGood
-wtOHT (ELamTyping tyderiv) = λ x x₁ → {!!}
+wtOHT {Γ} (ELamTyping {A = A} {B} {m} tyderiv) {γ} isGood {e} ht = let ih = wtOHT tyderiv in
+                                                                       let bodyht = ih {γ = (γ , e)} (ht , isGood) in {!!}
 wtOHT (EAppTyping tyderiv tyderiv₁) = {!!}
 
 SN : ∀ {A m} → · ⊢ m ⦂ A -> Σ Term (λ v -> m ↦* v × Val v)
