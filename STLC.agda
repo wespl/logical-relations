@@ -54,7 +54,6 @@ ctxSize · = 0
 ctxSize (Γ , A) = suc (ctxSize Γ)
 
 
-
 weaken : Term -> Term
 weaken (EVar x) = EVar (suc x)
 weaken EUnit = EUnit
@@ -62,18 +61,34 @@ weaken (EInt x) = EInt x
 weaken (ELam A m) = ELam A (weaken m)
 weaken (EApp f m) = EApp (weaken f) (weaken m)
 
+data UntypedSubst : Context -> Context -> Set where
+  · : ∀ {Γ} -> UntypedSubst Γ ·
+  _,_ : ∀ {Γ Δ A} -> UntypedSubst Γ Δ → Term → UntypedSubst Γ (Δ , A)
+
+applySubst : ∀ {Γ Δ} -> Term -> UntypedSubst Γ Δ -> Term
+applySubst EUnit ctx = EUnit
+applySubst (EInt x) ctx = EInt x
+applySubst (EVar zero) (rest , e') = e'
+applySubst (EVar (suc x)) (rest , e') = applySubst (EVar x) rest
+applySubst (EVar n) · = EVar n -- should never arise with well-formed e
+applySubst (ELam t e) ctx = ELam t (applySubst e (_,_ {A = t} ctx (EVar zero))) 
+-- when we push the substitution under the binder, we need to add [x/x] in the substitution
+applySubst (EApp e e₁) ctx = EApp (applySubst e ctx) (applySubst e₁ ctx)
+
+
 --subst e x e' = e[e'/x]
 -- This is broken.
 subst : Term -> Id -> Term -> Term
-subst EUnit i n = EUnit
-subst (EInt x) i n = EInt x
+subst e x e' =  {!!}
+--subst EUnit i n = EUnit
+--subst (EInt x) i n = EInt x
 
-subst (EVar i) i' n with i Data.Nat.≟ i'
-subst (EVar i) i' n | yes refl = n
-subst (EVar i) i' n | no _ = EVar i
+--subst (EVar i) i' n with i Data.Nat.≟ i'
+--subst (EVar i) i' n | yes refl = n
+--subst (EVar i) i' n | no _ = EVar i
 
-subst (ELam A m) i n = ELam A (subst m (suc i) (weaken n))
-subst (EApp f m) i n = EApp (subst f i n) (subst m i n)
+--subst (ELam A m) i n = ELam A (subst m (suc i) (weaken n))
+--subst (EApp f m) i n = EApp (subst f i n) (subst m i n)
 
 -- Typing derivations for terms.
 data _⊢_⦂_ : Context → Term -> Type → Set where
@@ -104,7 +119,7 @@ data _↦_ : Term -> Term -> Set where
 
 data _↦*_ : Term -> Term -> Set where
   Stop : ∀ {m} -> (m ↦* m)
-  Trans : ∀ {m m' m''} -> (m ↦* m') -> (m' ↦ m'') -> (m ↦* m'')
+  Trans : ∀ {m m' m''} -> (m ↦ m') -> (m' ↦* m'') -> (m ↦* m'')
 
 HT : Type -> Term -> Set
 HT `Int e = Σ ℤ (λ v -> e ↦* (EInt v))
@@ -113,28 +128,21 @@ HT (` A ⇒ B) f = ∀ {e} -> HT A e -> HT B (EApp f e)
 HT (` A × B) e = {!!}
 HT (` A ⊎ B) e = {!!}
 
-data UntypedSubst : Context -> Context -> Set where
-  · : ∀ {Γ} -> UntypedSubst Γ ·
-  _,_ : ∀ {Γ Δ A} -> UntypedSubst Γ Δ → Term → UntypedSubst Γ (Δ , A)
-
 
 goodSubst : (Γ : Context) -> UntypedSubst · Γ -> Set
 goodSubst .· · = ⊤
 goodSubst .(_ , _) (_,_ {Δ = Δ} {A = A} subst e) = HT A e × goodSubst Δ subst
 
- 
-applySubst : ∀ {Γ Δ} -> Term -> UntypedSubst Γ Δ -> Term
-applySubst EUnit ctx = EUnit
-applySubst (EInt x) ctx = EInt x
-applySubst (EVar zero) (rest , e') = e'
-applySubst (EVar (suc x)) (rest , e') = applySubst (EVar x) rest
-applySubst (EVar n) · = EVar n -- should never arise with well-formed e
-applySubst (ELam t e) ctx = ELam t (applySubst e (_,_ {A = t} ctx (EVar zero))) 
--- when we push the substitution under the binder, we need to add [x/x] in the substitution
-applySubst (EApp e e₁) ctx = EApp (applySubst e ctx) (applySubst e₁ ctx)
-
 OHT : Context -> Type -> Term -> Set
 OHT Γ τ e = ∀ {γ} -> (goodSubst Γ γ) -> HT τ (applySubst e γ)
+
+converseEval : ∀ {e e' t} -> e ↦ e' -> HT t e' -> HT t e
+converseEval {e} {e'} {`Int} step ht = (proj₁ ht) , Trans step (proj₂ ht)
+converseEval {e} {e'} {`Unit} step ht = Trans step ht
+-- need to fix subst to get this case to go through
+converseEval {e} {f} {` t₁ ⇒ t₂} step fnHt eHt = {!!}
+converseEval {e} {e'} {` t × t₁} step ht = {!!}
+converseEval {e} {e'} {` t ⊎ t₁} step ht = {!!}
 
 wtOHT : ∀ {Γ τ e} -> Γ ⊢ e ⦂ τ -> OHT Γ τ e
 wtOHT  UnitTyping s = Stop
@@ -143,7 +151,10 @@ wtOHT {τ = τ} LastVarTyping {γ , x} (ht , _) = ht
 wtOHT {τ = τ} (NextVarTyping {B = B} {n} tyderiv) {γ , x} (xGood , restGood) = wtOHT tyderiv restGood
 wtOHT {Γ} (ELamTyping {A = A} {B} {m} tyderiv) {γ} isGood {e} ht = let ih = wtOHT tyderiv in
                                                                        let bodyht = ih {γ = (γ , e)} (ht , isGood) in {!!}
-wtOHT (EAppTyping tyderiv tyderiv₁) = {!!}
+wtOHT (EAppTyping mderiv fderiv) {γ} isGood = ((wtOHT mderiv) isGood) ((wtOHT fderiv) isGood) 
 
 SN : ∀ {A m} → · ⊢ m ⦂ A -> Σ Term (λ v -> m ↦* v × Val v)
-SN = {!!}
+SN UnitTyping = EUnit , (Stop , UnitVal)
+SN (IntTyping {i = i}) = EInt i , Stop , IntVal
+SN (ELamTyping {A = A} {m = m} lamderiv) = ELam A m , (Stop , LamVal)
+SN (EAppTyping fderiv mderiv) = {!!}
