@@ -122,8 +122,7 @@ data Val : Term -> Set where
 
 data _↦_ : Term -> Term -> Set where
   Beta : ∀ {A n m} -> Val m -> (EApp (ELam A n) m) ↦ subst n 0 m
-  AppRight : ∀ {f m m'} -> (m ↦ m') -> (EApp f m) ↦ (EApp f m')
-  -- AppLeft : ∀ {f f' m} -> Val m -> (f ↦ f')-> (EApp f m) ↦ (EApp f' m)
+  AppRight : ∀ {f m m'} -> Val m -> (m ↦ m') -> (EApp f m) ↦ (EApp f m')
   AppLeft : ∀ {f f' m} -> (f ↦ f') -> (EApp f m) ↦ (EApp f' m)
 
 data _↦*_ : Term -> Term -> Set where
@@ -148,7 +147,7 @@ OHT Γ τ e = ∀ {γ} -> (goodSubst Γ γ) -> HT τ (applySubst e γ)
 converseEval : ∀ {e e' t} -> e ↦ e' -> HT t e' -> HT t e
 converseEval {t = `Int} s (z , ss) = z , (Trans s ss)
 converseEval {t = `Unit} s ht = Trans s ht
-converseEval {t = ` t ⇒ t₁} s ht hte₁ = {!!}
+converseEval {t = ` t ⇒ t₁} s ht {e₁} hte₁ = converseEval {t = t₁} (AppLeft {m = e₁} s) (ht hte₁)
 converseEval {t = ` t × t₁} s ht = {!!}
 converseEval {t = ` t ⊎ t₁} s ht = {!!}
 
